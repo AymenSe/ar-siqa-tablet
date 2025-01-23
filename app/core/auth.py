@@ -1,5 +1,6 @@
 # app/core/auth.py
 from datetime import datetime, timedelta
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from fastapi import HTTPException, status, Depends
 from sqlalchemy.orm import Session
@@ -10,7 +11,7 @@ from .security import verify_password
 
 # For JWT, install: pip install "python-jose[cryptography]"
 # This example uses synchronous code for brevity.
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day
@@ -32,7 +33,8 @@ def authenticate_user(db: Session, username: str, password: str):
         return None
     return subject
 
-def get_current_subject(token: str = Depends(...), db: Session = Depends(get_db)):
+
+def get_current_subject(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     """
     This function will parse the token, verify it, 
     and return the authenticated Subject from the DB.

@@ -25,7 +25,7 @@ class SubjectOut(SubjectBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # ----------------------------------------------------------------
 # IMAGES
@@ -43,7 +43,7 @@ class ImageOut(ImageBase):
     category_id: Optional[int] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # ----------------------------------------------------------------
 # QUESTIONS
@@ -62,7 +62,7 @@ class QuestionOut(QuestionBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # ----------------------------------------------------------------
 # SESSIONS
@@ -79,7 +79,7 @@ class SessionOut(SessionBase):
     is_completed: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # ----------------------------------------------------------------
 # RATINGS
@@ -99,7 +99,7 @@ class RatingOut(RatingBase):
     question_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # ----------------------------------------------------------------
 # SESSION IMAGES
@@ -112,4 +112,4 @@ class SessionImageOut(BaseModel):
     is_training: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
