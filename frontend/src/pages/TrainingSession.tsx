@@ -1,7 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+
+interface Question {
+  question_id: number;
+  text: string;
+  category: string;
+}
 
 interface ImageData {
   file_path?: string;
@@ -13,160 +18,197 @@ interface SessionImage {
   image?: ImageData;
 }
 
+interface Answer {
+  question_id: number;
+  answer: string;
+}
+
+function QuestionCard({
+  question,
+  onAnswerChange,
+}: {
+  question: Question;
+  onAnswerChange: (answer: Answer) => void;
+}) {
+  const options = ["Very Bad", "Bad", "Neutral", "Good", "Very Good"]; // Example categorical options
+
+  const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onAnswerChange({ question_id: question.question_id, answer: e.target.value });
+  };
+
+  return (
+    <div className="p-4 border rounded-lg shadow bg-gray-50">
+      <h3 className="font-bold mb-2">{question.text}</h3>
+      <select
+        onChange={handleSelect}
+        className="w-full border rounded p-2"
+        defaultValue=""
+      >
+        <option value="" disabled>
+          Select an answer
+        </option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function TrainingSession() {
   const navigate = useNavigate();
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [images, setImages] = useState<SessionImage[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [ratingValue, setRatingValue] = useState<number>(3);
-  const [showSlider, setShowSlider] = useState(false);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [answers, setAnswers] = useState<Answer[]>([]);
+  const [showQuestions, setShowQuestions] = useState(false);
 
-  const createTrainingSession = useCallback(async (subject_id: string) => {
+  useEffect(() => {
+    const subject_id = localStorage.getItem("subject_id");
+    if (!subject_id) {
+      navigate("/register");
+      return;
+    }
+    createTrainingSession(subject_id);
+    fetchQuestions();
+  }, [navigate]);
+
+  useEffect(() => {
+    setShowQuestions(false); // Hide questions initially
+    const timer = setTimeout(() => setShowQuestions(true), 5000); // Show after 5 seconds
+    return () => clearTimeout(timer);
+  }, [currentIndex]);
+
+  const createTrainingSession = async (subject_id: string) => {
     try {
-      // 1. Create a training session
-      const sessionRes = await axios.post('http://127.0.0.1:8000/sessions', {
+      const sessionRes = await axios.post("http://127.0.0.1:8000/sessions", {
         subject_id: parseInt(subject_id, 10),
-        session_type: 'training'
+        session_type: "training",
       });
       setSessionId(sessionRes.data.session_id);
 
-      // 2. Assign images to the session (hard-coded example)
+      // Assign images (hard-coded example)
       const imagesToAssign = [1, 2, 3, 4, 5];
       await axios.post(
         `http://127.0.0.1:8000/session-images/${sessionRes.data.session_id}/assign_images`,
         imagesToAssign
       );
 
-      // 3. Load images
       loadTrainingImages(sessionRes.data.session_id);
     } catch (error) {
-      console.error('Error in creating/assigning training session:', error);
-      alert('Could not create or assign images for training session');
+      console.error("Error creating training session:", error);
+      alert("Could not create training session");
     }
-  }, []);
+  };
 
   const loadTrainingImages = async (sId: number) => {
     try {
-      const res = await axios.get<SessionImage[]>('http://127.0.0.1:8000/session-images', {
-        params: { session_id: sId }
-      });
+      const res = await axios.get<SessionImage[]>(
+        "http://127.0.0.1:8000/session-images",
+        {
+          params: { session_id: sId },
+        }
+      );
       setImages(res.data);
       setCurrentIndex(0);
     } catch (error) {
-      console.error(error);
-      alert('Could not load training images');
+      console.error("Error loading images:", error);
+      alert("Could not load training session images");
     }
   };
 
-  useEffect(() => {
-    const subject_id = localStorage.getItem('subject_id');
-    if (!subject_id) {
-      navigate('/register');
-      return;
-    }
-    createTrainingSession(subject_id);
-  }, [navigate, createTrainingSession]);
-
-  // Hide slider for 5s each time a new image is loaded
-  useEffect(() => {
-    setShowSlider(false);
-    const timer = setTimeout(() => setShowSlider(true), 5000);
-    return () => clearTimeout(timer);
-  }, [currentIndex]);
-
-  const handleRatingSubmit = async () => {
-    if (currentIndex >= images.length) return;
-    const sessionImage = images[currentIndex];
+  const fetchQuestions = async () => {
     try {
-      await axios.post('http://127.0.0.1:8000/ratings', {
-        session_image_id: sessionImage.session_image_id,
-        question_id: 1,
-        rating_value: ratingValue,
-        text_answer: null,
-        response_time: 2.5
+      const res = await axios.get<Question[]>("http://127.0.0.1:8000/questions");
+      setQuestions(res.data);
+    } catch (error) {
+      console.error("Error fetching questions:", error);
+      alert("Could not load questions");
+    }
+  };
+
+  const handleAnswerChange = (newAnswer: Answer) => {
+    setAnswers((prev) => {
+      const updated = prev.filter((a) => a.question_id !== newAnswer.question_id);
+      updated.push(newAnswer);
+      return updated;
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (currentIndex >= images.length) return;
+
+    try {
+      await axios.post("http://127.0.0.1:8000/ratings", {
+        session_image_id: images[currentIndex].session_image_id,
+        question_ids: answers.map((a) => a.question_id),
+        ratings: answers,
+
       });
-      // Next
+      setAnswers([]);
       setCurrentIndex((prev) => prev + 1);
     } catch (error) {
-      console.error(error);
-      alert('Failed to submit rating');
+      console.error("Error submitting ratings:", error);
+      alert("Failed to submit ratings");
     }
   };
 
-  if (sessionId === null) {
-    return <div className="p-8">Loading Training Session...</div>;
-  }
-
-  if (!images.length) {
-    return <div className="p-8">No training images assigned</div>;
-  }
-
   if (currentIndex >= images.length) {
-    // Done
     return (
-      <motion.div
-        className="flex flex-col items-center justify-center flex-1 p-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="bg-white p-8 rounded-xl shadow-md text-center">
-          <h2 className="text-2xl font-bold mb-4">Training Completed!</h2>
-          <button
-            onClick={() => navigate('/break')}
-            className="px-6 py-2 bg-black text-white font-semibold rounded-2xl shadow hover:bg-gray-800 transition-all"
-          >
-            Proceed to Break
-          </button>
-        </div>
-      </motion.div>
+      <div className="p-8 text-center">
+        <h2 className="text-2xl font-bold">Training Session Completed!</h2>
+        <button
+          onClick={() => navigate("/break")}
+          className="mt-4 px-6 py-2 bg-black text-white rounded shadow"
+        >
+          Proceed to Break
+        </button>
+      </div>
     );
   }
 
   const currentImage = images[currentIndex];
-  const imageUrl = `http://127.0.0.1:8000/${currentImage.image?.file_path || ''}`;
+  const imageUrl = `http://127.0.0.1:8000/${currentImage?.image?.file_path}`;
 
   return (
-    <motion.div
-      className="flex flex-col items-center justify-center flex-1 p-8"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <div className="bg-white p-8 rounded-xl shadow-md flex flex-col items-center">
-        <h2 className="text-2xl font-bold mb-2">Training Session</h2>
-        <p className="text-gray-600 mb-4">Image {currentIndex + 1} of {images.length}</p>
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
+      <div className="p-8 bg-white rounded-lg shadow-lg w-full max-w-3xl text-center">
+        <h2 className="text-2xl font-bold mb-4">Training Session</h2>
+        <p className="text-gray-600 mb-4">
+          Image {currentIndex + 1} of {images.length}
+        </p>
         <img
           src={imageUrl}
-          alt={currentImage.image?.file_name || 'training_image'}
-          className="w-full rounded-xl mb-4"
-          style={{ maxHeight: '512px', objectFit: 'contain' }}
+          alt={currentImage?.image?.file_name}
+          className="w-full max-h-96 rounded-lg mb-4 object-contain"
         />
-        {!showSlider && (
-          <p className="mb-4 text-gray-500">Please wait 5 seconds before rating...</p>
+        {!showQuestions && (
+          <p className="text-gray-500">Please wait 5 seconds for the questions to appear...</p>
         )}
-        {showSlider && (
-          <div className="flex flex-col items-center w-full">
-            <input
-              type="range"
-              min={1}
-              max={5}
-              step={1}
-              value={ratingValue}
-              onChange={(e) => setRatingValue(Number(e.target.value))}
-              className="w-1/2 mb-2"
-            />
-            <p className="font-medium mb-4">Current Rating: {ratingValue}</p>
-            <button
-              onClick={handleRatingSubmit}
-              className="px-6 py-2 bg-black text-white font-semibold rounded-2xl shadow hover:bg-gray-800 transition-all"
-            >
-              Submit Rating
-            </button>
+        {showQuestions && (
+          <div className="grid grid-cols-2 gap-4">
+            {questions.map((question) => (
+              <QuestionCard
+                key={question.question_id}
+                question={question}
+                onAnswerChange={handleAnswerChange}
+              />
+            ))}
           </div>
         )}
+        {showQuestions && (
+          <button
+            onClick={handleSubmit}
+            className="mt-6 px-6 py-2 bg-black text-white rounded shadow"
+          >
+            Submit
+          </button>
+        )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
