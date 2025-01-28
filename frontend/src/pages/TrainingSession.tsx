@@ -126,47 +126,74 @@ function TrainingSession() {
   const currentImage = images[currentIndex];
   const imageUrl = `http://127.0.0.1:8000/${currentImage.image?.file_path || ''}`;
 
+  const ratingLabels = ["Bad", "Poor", "Fair", "Good", "Perfect"];
+
   return (
     <motion.div
-      className="flex flex-col items-center justify-center flex-1 p-8"
+      className="flex flex-col flex-1 p-0"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="bg-white p-8 rounded-xl shadow-md flex flex-col items-center">
-        <h2 className="text-2xl font-bold mb-2">Training Session</h2>
-        <p className="text-gray-600 mb-4">Image {currentIndex + 1} of {images.length}</p>
-        <img
-          src={imageUrl}
-          alt={currentImage.image?.file_name || 'training_image'}
-          className="w-full rounded-xl mb-4"
-          style={{ maxHeight: '512px', objectFit: 'contain' }}
-        />
-        {!showSlider && (
-          <p className="mb-4 text-gray-500">Please wait 5 seconds before rating...</p>
-        )}
-        {showSlider && (
-          <div className="flex flex-col items-center w-full">
-            <input
-              type="range"
-              min={1}
-              max={5}
-              step={1}
-              value={ratingValue}
-              onChange={(e) => setRatingValue(Number(e.target.value))}
-              className="w-1/2 mb-2"
-            />
-            <p className="font-medium mb-4">Current Rating: {ratingValue}</p>
+      {/* Main Content */}
+      <div className="relative flex justify-center items-center h-screen w-screen">
+        {/* Image (Fullscreen) */}
+        {!showSlider ? (
+          <img
+            src={imageUrl}
+            alt={currentImage.image?.file_name || "training_image"}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          /* Slider Content */
+          <div
+            className="absolute inset-0 flex flex-col justify-center items-center"
+          >
+          <p className="text-gray-600 font-bold text-center ">Training Session | Image {currentIndex + 1} of {images.length}</p>
+          <hr className="mb-6" />
+
+            <p className="text-2xl font-bold text-black mb-6">
+              How do you rate the quality?
+            </p>
+
+            <div className="w-2/4 relative mb-6">
+              <input
+                id="large-range"
+                type="range"
+                min={1}
+                max={5}
+                step={1}
+                value={ratingValue}
+                onChange={(e) => setRatingValue(Number(e.target.value))}
+                className="w-full h-3 bg-gray rounded-lg appearance-none cursor-pointer range-lg dark:bg-gray-700"
+                style={{
+                  accentColor: "blue",
+                }}
+              />
+              <span className="text-sm text-gray-600 dark:text-gray-500 font-bold absolute start-0 -bottom-6">Bad</span>
+              <span className="text-sm text-gray-600 dark:text-gray-500 font-bold absolute start-1/4 -translate-x-1/2 rtl:translate-x-1/2 -bottom-6">Poor</span>
+              <span className="text-sm text-gray-600 dark:text-gray-500 font-bold absolute start-2/4 -translate-x-1/2 rtl:translate-x-1/2 -bottom-6">Fair</span>
+              <span className="text-sm text-gray-600 dark:text-gray-500 font-bold absolute start-3/4 -translate-x-1/2 rtl:translate-x-1/2 -bottom-6">Good</span>
+              <span className="text-sm text-gray-600 dark:text-gray-500 font-bold absolute end-0 -bottom-6">Perfect</span>
+            </div>
+
+            <p className="text-sm text-black font-bold mt-4">
+              The precieved qaulity is {ratingLabels[ratingValue - 1]}
+            </p>
+
+            {/* Submit Button */}
             <button
               onClick={handleRatingSubmit}
-              className="px-6 py-2 bg-black text-white font-semibold rounded-2xl shadow hover:bg-gray-800 transition-all"
+              className="px-6 py-2 mt-6 bg-black text-white font-semibold rounded-2xl shadow hover:bg-gray-800 transition-all"
             >
-              Submit Rating
+              Submit & Next
             </button>
           </div>
         )}
       </div>
     </motion.div>
+
+
   );
 }
 
